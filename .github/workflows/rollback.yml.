@@ -1,0 +1,46 @@
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Версия (тег образа) для отката'
+        required: true
+        default: 'latest'
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Rollback to previous version
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          VERSION="${{ github.event.inputs.version }}"
+          IMAGE_TAG=ghcr.io/${REPO_LOWER}:${VERSION}
+          
+          echo "Rolling back to version: ${VERSION}"
+          
+          docker stop app-blue 2>/dev/null || true
+          docker rm app-blue 2>/dev/null || true
+          
+          docker run -d --name app-blue -p 8080:8080 ${IMAGE_TAG}
+          
+          sleep 5
+          curl --retry 10 --retry-delay 2 --fail http://localhost:8080/health || exit 1
+          
+          echo "Rollback to ${VERSION} completed"
+
+      - name: Save rollback logs
+        if: always()
+        run: |
+          docker logs app-blue > rollback_logs.txt 2>&1
+
+      - name: Upload rollback logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: rollback-logs
+          path: rollback_logs.txt
