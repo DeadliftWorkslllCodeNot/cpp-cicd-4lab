@@ -86,6 +86,6 @@ jobs:
       
       - name: Build and push Docker image
         run: |
-          IMAGE_TAG=ghcr.io/${ env.REPO_LOWER }:latest
+          IMAGE_TAG=ghcr.io/${env.REPO_LOWER}:latest
           docker build -t $IMAGE_TAG .
           docker push $IMAGE_TAG
